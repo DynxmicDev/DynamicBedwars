@@ -1,0 +1,8 @@
+name: DynamicBedwars
+main: dev.dynxmic.dynamicbedwars.DynamicBedwars
+version: ${project.version}
+author: DynxmicDev
+
+commands:
+
+permissions:
