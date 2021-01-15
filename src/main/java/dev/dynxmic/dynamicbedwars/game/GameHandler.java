@@ -6,6 +6,7 @@ import dev.dynxmic.dynamicbedwars.util.PluginUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -25,60 +26,98 @@ public class GameHandler {
 
     private final int teamSize;
     private final int required;
+    private final int maximum;
 
     private final Map<UUID, PlayerState> players;
     private final Map<BedwarsTeam, List<UUID>> teams;
+    private final Map<BedwarsTeam, Boolean> beds;
     private final List<GameParty> parties;
     private final List<Location> placedBlocks;
 
-    public GameHandler(int teamSize, int required) {
+    public GameHandler(int teamSize, int required, int maximum) {
         this.players = new HashMap<>();
         this.teams = new HashMap<>();
+        this.beds = new HashMap<>();
         this.parties = new ArrayList<>();
         this.placedBlocks = new ArrayList<>();
         this.countdownID = 0;
         this.state = GameState.WAITING;
         this.teamSize = teamSize;
         this.required = required;
+        this.maximum = maximum;
 
+        // Blank List For Team Players
         for (BedwarsTeam team : BedwarsTeam.values()) teams.put(team, new ArrayList<>());
     }
 
     private void startCountdown() {
+        // Return if Running Countdown
         if (countdownID != 0) return;
+
+        // Run Countdown Task
         countdown = 20;
         BukkitTask task = new BukkitRunnable() {
 
             @Override
             public void run() {
                 if (countdown == 0) {
+                    // Cancel Task And Start Game
                     cancel();
                     startGame();
                     return;
                 }
 
-                if (countdown == 20) broadcastStart("&e", countdown);
-                if (countdown == 10) broadcastStart("&6", countdown);
-                if (countdown < 6) broadcastStart("&c", countdown);
+                broadcastStart();
                 countdown--;
             }
 
-        }.runTaskTimer(PluginUtils.getPlugin(), 0L, 20L);
-        countdownID = task.getTaskId();
+        }.runTaskTimer(PluginUtils.getPlugin(), 0L, 20L);  // Run Every Second
+        countdownID = task.getTaskId();  // Set Countdown As The Running Countdown
     }
 
     public void cancelCountdown() {
-        if (countdown == 0) return;
+        // Return If No Running Countdown
+        if (countdownID == 0) return;
+
+        // Cancel Countdown
         Bukkit.getScheduler().cancelTask(countdownID);
         ChatUtils.broadcast("&cWe don't have enough players! Start cancelled.");
+
+        // Set No Running Countdown
         countdownID = 0;
     }
 
-    private void broadcastStart(String colour, int count) {
-        ChatUtils.broadcast("&eThe game starts in " + colour + count + " &eseconds!");
+    private void broadcastStart() {
+        // Yellow Message When 20 Seconds Until Start + Click Sound
+        if (countdown == 20) {
+            ChatUtils.broadcast("&eThe game starts in &e" + countdown + " &eseconds!");
+            ChatUtils.broadcastSound(Sound.CLICK);
+        }
+
+        // Orange Message When 20 Seconds Until Start + Green Title + Click Sound
+        if (countdown == 10) {
+            ChatUtils.broadcast("&eThe game starts in &6" + countdown + " &eseconds!");
+            ChatUtils.broadcastSound(Sound.CLICK);
+            ChatUtils.broadcastTitle("&a" + countdown);
+        }
+
+        // Red Message When 3/2/1 Seconds Until Start + Red Title + Click Sound
+        if (countdown < 4) {
+            ChatUtils.broadcast("&eThe game starts in &c" + countdown + " &eseconds!");
+            ChatUtils.broadcastSound(Sound.CLICK);
+            ChatUtils.broadcastTitle("&c" + countdown);
+        }
+
+        // Red Message When 20 Seconds Until Start + Yellow Title + Click Sound
+        else if (countdown < 6) {
+            ChatUtils.broadcast("&eThe game starts in &c" + countdown + " &eseconds!");
+            ChatUtils.broadcastSound(Sound.CLICK);
+            ChatUtils.broadcastTitle("&e" + countdown);
+        }
     }
 
     private void startGame() {
+        // Set GameState Playing
         state = GameState.PLAYING;
 
         // Calculate Party Teams
@@ -128,50 +167,61 @@ public class GameHandler {
                 PlayerUtils.prepare(Bukkit.getPlayer(player), GameMode.SURVIVAL, new ItemStack[]{}, new ItemStack[]{}, PlayerState.ALIVE);
             }
         }
+
+        // Set Team Beds If Team Exists
+        for (BedwarsTeam team : BedwarsTeam.values()) beds.put(team, getTeamMembers(team).size() > 0);
     }
 
     public void handleLogin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
 
+        // Set Player As Spectator If not Defined
+        if (!players.containsKey(player.getUniqueId())) {
+            setPlayerState(player.getUniqueId(), PlayerState.SPECTATOR);
+        }
+
         if (getState().equals(GameState.WAITING)) {
+            // Waiting Join
             PlayerUtils.prepare(player, GameMode.ADVENTURE, new ItemStack[]{}, new ItemStack[]{}, PlayerState.WAITING);
+            ChatUtils.broadcast(player.getDisplayName() + " &ehas joined (&b" + players.size() + "&e/&b" + maximum + "&e)!");
             event.setJoinMessage(null);
 
             if (players.keySet().size() >= required) startCountdown();
-        } else if (getState().equals(GameState.PLAYING)) {
-            if (getPlayerState(player.getUniqueId()).equals(PlayerState.ALIVE)) {
-                PlayerUtils.prepare(player, GameMode.SURVIVAL, new ItemStack[]{}, new ItemStack[]{}, PlayerState.ALIVE);
-                respawn(player);
-
-                event.setJoinMessage(null);
-            } else {
-                PlayerUtils.prepare(player, GameMode.SPECTATOR, new ItemStack[]{}, new ItemStack[]{}, PlayerState.SPECTATOR);
-            }
+        } else if (getState().equals(GameState.PLAYING) && getPlayerState(player.getUniqueId()).equals(PlayerState.ALIVE)) {
+            // Player Reconnect
+            PlayerUtils.prepare(player, GameMode.SURVIVAL, new ItemStack[]{}, new ItemStack[]{}, PlayerState.ALIVE);
+            ChatUtils.broadcast(player.getDisplayName() + " &7reconnected");
         } else {
+            // Spectator Reconnect
             PlayerUtils.prepare(player, GameMode.SPECTATOR, new ItemStack[]{}, new ItemStack[]{}, PlayerState.SPECTATOR);
         }
+
+        event.setJoinMessage(null);
     }
 
     public void handleLogout(PlayerQuitEvent event) {
         Player player = event.getPlayer();
 
         if (getState().equals(GameState.WAITING)) {
+            // Waiting Quit
             players.remove(player.getUniqueId());
+            ChatUtils.broadcast(player.getDisplayName() + " &ehas quit!");
             if (players.keySet().size() < required) cancelCountdown();
         } else if (getState().equals(GameState.PLAYING) && getPlayerState(player.getUniqueId()).equals(PlayerState.ALIVE)) {
-            // TODO Disconnect Player
+            // Player Disconnect
+            ChatUtils.broadcast(player.getDisplayName() + " &7disconnected");
         }
-    }
 
-    private void respawn(Player player) {
-        // TODO Respawn
+        event.setQuitMessage(null);
     }
 
     public void handleBlockBreak(BlockBreakEvent event) {
+        // Cancel Event If Block Is Part Of Map
         event.setCancelled(!placedBlocks.contains(event.getBlock().getLocation()));
     }
 
     public void handleBlockPlace(BlockPlaceEvent event) {
+        // Add Block To List Of Blocks Placed By Players
         if (!placedBlocks.contains(event.getBlock().getLocation())) placedBlocks.add(event.getBlock().getLocation());
     }
 
@@ -188,6 +238,7 @@ public class GameHandler {
     }
 
     public BedwarsTeam getPlayerTeam(UUID player) {
+        // Return Spectator If Not Defined
         if (teams.keySet().stream().noneMatch(team -> getTeamMembers(team).contains(player))) return BedwarsTeam.SPECTATOR;
         else return teams.keySet().stream().filter(team -> getTeamMembers(team).contains(player)).findAny().get();
     }

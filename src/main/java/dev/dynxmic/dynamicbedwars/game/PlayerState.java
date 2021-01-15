@@ -2,8 +2,8 @@ package dev.dynxmic.dynamicbedwars.game;
 
 public enum PlayerState {
 
-    WAITING,
-    ALIVE,
-    SPECTATOR
+    WAITING,  // Waiting In Lobby
+    ALIVE,  // Alive In Game
+    SPECTATOR  // Spectating Game / Eliminated
 
 }

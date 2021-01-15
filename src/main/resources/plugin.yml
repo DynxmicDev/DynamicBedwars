@@ -2,7 +2,7 @@ name: DynamicBedwars
 main: dev.dynxmic.dynamicbedwars.DynamicBedwars
 version: ${project.version}
 author: DynxmicDev
+depend: [ProtocolLib]
 
 commands:
-
 permissions:

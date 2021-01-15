@@ -2,8 +2,8 @@ package dev.dynxmic.dynamicbedwars.game;
 
 public enum GameState {
 
-    WAITING,
-    PLAYING,
-    ENDED
+    WAITING,  // Waiting For Sufficient Players
+    PLAYING,  // Playing Game
+    ENDED  // Game Ended
 
 }

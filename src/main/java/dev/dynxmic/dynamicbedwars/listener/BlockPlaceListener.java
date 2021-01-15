@@ -10,6 +10,7 @@ public class BlockPlaceListener implements Listener {
 
     @EventHandler
     public void onBlockBreak(BlockPlaceEvent event) {
+        // Add Placed Blocks To Memory
         PluginUtils.getGameHandler().handleBlockPlace(event);
     }
 

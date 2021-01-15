@@ -15,6 +15,7 @@ public class PlayerJoinListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
+        // Handle Player Join
         PluginUtils.getGameHandler().handleLogin(event);
     }
 

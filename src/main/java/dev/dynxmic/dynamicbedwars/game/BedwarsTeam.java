@@ -5,7 +5,7 @@ import org.bukkit.GameMode;
 public enum BedwarsTeam {
 
     RED(-84.5, 65, 26.5, "&c"),
-    // BLUE,
+    BLUE(-84.5, 65, 26.5, "&9"),
     // GREEN,
     // YELLOW,
     // AQUA,

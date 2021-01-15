@@ -16,6 +16,7 @@ public class PlayerQuitListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
+        // Handle Player Quit
         PluginUtils.getGameHandler().handleLogout(event);
     }
 

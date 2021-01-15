@@ -8,6 +8,7 @@ public class HungerLossListener implements Listener {
 
     @EventHandler
     public void onHungerLoss(FoodLevelChangeEvent event) {
+        // Set Hunger 20 If Not Already
         if (event.getFoodLevel() != 20) event.setFoodLevel(20);
         event.setCancelled(true);
     }

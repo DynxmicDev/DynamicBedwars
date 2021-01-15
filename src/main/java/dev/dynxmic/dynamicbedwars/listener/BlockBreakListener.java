@@ -10,6 +10,7 @@ public class BlockBreakListener implements Listener {
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
+        // Check Block Breaks
         PluginUtils.getGameHandler().handleBlockBreak(event);
     }
 
